@@ -1,0 +1,50 @@
+version: '2' 
+
+services:
+
+  spark-master:
+    image: bde2020/spark-master:3.0.1-hadoop3.2
+    container_name: spark-master
+    ports:
+      - 8080:8080
+      - 7077:7077
+    environment: 
+      - PYSPARK_PYTHON=python3
+    volumes:
+      - ./apps:/spark/apps
+    env_file:
+      - ./hdfs.env
+    networks:
+      - globalNetwork
+
+  spark-worker1:
+    image: bde2020/spark-worker:3.0.1-hadoop3.2
+    container_name: spark-worker1
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+    ports:
+      - 8081:8081
+    env_file:
+      - ./hdfs.env
+    networks:
+      - globalNetwork
+  
+  spark-worker2:
+    image: bde2020/spark-worker:3.0.1-hadoop3.2
+    container_name: spark-worker2
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+    ports:
+      - 8082:8081
+    env_file:
+      - ./hdfs.env
+    networks:
+      - globalNetwork
+
+networks:
+  globalNetwork:
+    external: true

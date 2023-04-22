@@ -39,18 +39,6 @@ services:
       - ./hdfs.env
     networks:
       - globalNetwork
-
-  datanode3:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode3
-    volumes:
-      - hadoop_datanode3:/hadoop/dfs/data
-    environment:
-      SERVICE_PRECONDITION: "namenode:9870"
-    env_file:
-      - ./hdfs.env
-    networks:
-      - globalNetwork
   
   hue:
     image: gethue/hue:20201111-135001
@@ -63,12 +51,13 @@ services:
       - ./conf.dist:/usr/share/hue/desktop/conf
     depends_on:
       - namenode
+    networks:
+      - globalNetwork
 
 volumes:
   hadoop_namenode:
   hadoop_datanode1:
   hadoop_datanode2:
-  hadoop_datanode3:
 
 networks:
   globalNetwork:

@@ -118,7 +118,7 @@ venv.bak/
 .ropeproject
 
 batch_producer/data/
-data/real-time_processing/
+real-time_producer/data/
 
 
 # mkdocs documentation

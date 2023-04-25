@@ -14,3 +14,6 @@ docker-compose up -d
 
 cd ../spark
 docker-compose up -d
+
+cd ../real-time_producer
+docker-compose up -d

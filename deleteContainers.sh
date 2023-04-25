@@ -12,6 +12,9 @@ docker-compose down
 cd ../spark
 docker-compose down
 
+cd ../real-time_producer
+docker-compose down
+
 #delete network
 
 docker network rm globalNetwork

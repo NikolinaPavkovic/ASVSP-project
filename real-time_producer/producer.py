@@ -22,7 +22,7 @@ while True:
 with open("./datasets/realtime_final.csv") as csv_file:
     csv_reader = csv.reader(csv_file)
     header = next(csv_reader)
-    print("Header", header)
+    print("Header:", header)
 
     message = None
     for row in csv_reader:
@@ -30,7 +30,7 @@ with open("./datasets/realtime_final.csv") as csv_file:
         for value in row:
             message_field_value_list.append(value)
             message = ",".join(message_field_value_list)
-        print(row)
+        print(message)
         kafka_producer.send(KAFKA_TOPIC, message)
         message_field_value_list = []
         message = None

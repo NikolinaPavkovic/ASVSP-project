@@ -162,6 +162,3 @@ if __name__ == '__main__':
     #airport_income_by_month(df)
     #income_of_starting_airport_by_month_cum(df)
     
-    
-    
-    #running_avg_totalfare(df)

@@ -91,7 +91,7 @@ def biggest_total_fair_by_month_for_flight(df):
     result = result.withColumn('fareRank',row_number().over(window.orderBy(col('maxTotalFare').desc())))
     save_to_postgres(result, 'biggest_total_fair_by_month_for_flight')
 
-#8
+#
 def airport_income_by_month(df):
     window = Window.partitionBy('startingAirport').orderBy('flightDate', 'totalFare', 'legId')
 
@@ -102,7 +102,7 @@ def airport_income_by_month(df):
     df.show()
     save_to_postgres(df, "airport_income_by_month")
 
-#9
+#8
 def income_of_starting_airport_by_month_cum(df):
     window = Window.partitionBy('startingAirport').orderBy('month', 'total_income')
     

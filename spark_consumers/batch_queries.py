@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.window import Window
-from pyspark.sql.functions import avg,min,max,rank,col, desc, count, when, sum, to_date, date_format, row_number
+from pyspark.sql.functions import avg,min,max,rank,col, desc, count, when, sum, round, date_format, row_number
 
 from pyspark.sql.types import IntegerType, DoubleType, BooleanType
 
@@ -8,7 +8,7 @@ HDFS_NAMENODE = "hdfs://namenode:9000"
 
 spark = SparkSession.builder.appName("HDFSDataCurated").getOrCreate()
 
-# Prosecna cena karte za svaku rutu (pocetni i odredisni aerodrom)
+#1 Prosecna cena karte za svaku rutu (pocetni i odredisni aerodrom)
 def avg_basefare(df):
     window = Window.partitionBy("startingAirport", "destinationAirport")
     avgBaseFare = avg("baseFare").over(window).alias('avgBaseFare')
@@ -16,7 +16,7 @@ def avg_basefare(df):
     save_to_postgres(result, "avg_basefare")
 
 
-# Minimalno, maksimalno i prosecno trajanje putovanja za svaku rutu (pocetni i odredisni aerodrom)
+#2 Minimalno, maksimalno i prosecno trajanje putovanja za svaku rutu
 def min_max_avg_travelDuration(df):
 
     window = Window.partitionBy("startingAirport", "destinationAirport")
@@ -28,7 +28,7 @@ def min_max_avg_travelDuration(df):
     save_to_postgres(result, "min_max_avg_travelDuration")
 
 
-# Razlika u ceni karata izmedju svakog leta i prosecne cene karata za rutu
+#3 Razlika u ceni karata izmedju svakog leta i prosecne cene karata za rutu
 def diff_totalFare(df):
     window = Window.partitionBy("startingAirport", "destinationAirport")
 
@@ -37,17 +37,21 @@ def diff_totalFare(df):
     save_to_postgres(result, "diff_totalFare")
 
 
-# Ukupna zarada po ruti za sve letove
-# sortirano po datumu leta
+#4 Ukupna zarada po ruti za sve letove sortirano po datumu leta
 def cumulative_total_fare(df):
-    window_spec = Window.partitionBy("startingAirport", "destinationAirport").orderBy("flightDate")
+    window = Window.partitionBy('startingAirport', 'destinationAirport').orderBy('flightDate', 'totalIncome')
+    
+    result = df.groupBy('startingAirport','destinationAirport', 'flightDate') \
+    .agg(sum('totalFare').alias('totalIncome'))\
+    .orderBy('startingAirport', 'flightDate') \
+    
+    result = result.withColumn('totalIncome', round('totalIncome', 2))
+    result = result.withColumn('cumTotalFare', sum('totalIncome').over(window))
+    result = result.withColumn('cumTotalFare', round('cumTotalFare', 2))
+    save_to_postgres(result, "cumulative_total_fare2")
 
-    result = df.select("startingAirport", "destinationAirport", "flightDate",
-                        sum("totalFare").over(window_spec).alias("cumTotalFare")).orderBy("flightDate")
-    save_to_postgres(result, "cumulative_total_fare")
 
-
-# Procenat letova bez presedanja za svaki pocetni aerodrom, i rangiranje
+#5 Procenat letova bez presedanja za svaki aerodrom, i rangiranje
 # svake grupe aerodroma po procentu letove bez presedanja
 def non_stop_percentage(df):
     window = Window.orderBy(desc("nonStopPercentage"))
@@ -62,7 +66,7 @@ def non_stop_percentage(df):
     save_to_postgres(result, "non_stop_percentage")
 
 
-# Minimalna i maksimalna udaljenost za svaku rutu (pocetni i odredisni aerodrom)
+#6 Minimalna i maksimalna udaljenost za svaku rutu (pocetni i odredisni aerodrom)
 def min_max_travelDistance(df):
 
     window = Window.partitionBy("startingAirport", "destinationAirport")
@@ -72,17 +76,20 @@ def min_max_travelDistance(df):
                        max("totalTravelDistance").over(window).alias("maxTravelDistance"))
     save_to_postgres(result, "min_max_travelDistance")
 
-#7
+#7 Najveca cena karte po aerodromu za svaki mesec, rangirano
 def biggest_total_fair_by_month_for_flight(df):
 
-    window = Window.partitionBy(date_format('flightDate', 'yyyy-MM'))
+    window = Window.partitionBy('month')
 
-    result = df.select('legId', 'flightDate', 'startingAirport', 'destinationAirport', 'totalFare',
-                            row_number().over(window.orderBy(col('totalFare').desc())).alias('fareRank'))
+    df = df.withColumn('month', date_format('flightDate', 'yyyy-MM'))
 
-    result.show()
-
-    save_to_postgres(result, "remaining_seats_percentage")
+    result = df.select('startingAirport', 'destinationAirport', 'totalFare', 'month')\
+                .groupBy('startingAirport', 'destinationAirport', 'month')\
+                .agg(max('totalFare').alias('maxTotalFare'))\
+                .orderBy(desc('maxTotalFare'))
+    
+    result = result.withColumn('fareRank',row_number().over(window.orderBy(col('maxTotalFare').desc())))
+    save_to_postgres(result, 'biggest_total_fair_by_month_for_flight')
 
 #8
 def airport_income_by_month(df):
@@ -102,9 +109,11 @@ def income_of_starting_airport_by_month_cum(df):
     df = df.withColumn('month', date_format('flightDate', 'yyyy-MM')) \
     .groupBy('startingAirport', 'month') \
     .agg(sum('totalFare').alias('total_income'))\
-    .orderBy('startingAirport', 'month') \
-    
+    .orderBy('startingAirport', 'month')
+
+    df = df.withColumn('total_income', round('total_income', 2))
     df = df.withColumn('cumulative_income', sum('total_income').over(window))
+    df = df.withColumn('cumulative_income', round('cumulative_income', 2))
     df.show()
 
     save_to_postgres(df, "income_of_starting_airport_by_month_cum")
@@ -160,5 +169,5 @@ if __name__ == '__main__':
     #min_max_travelDistance(df)
     #biggest_total_fair_by_month_for_flight(df)
     #airport_income_by_month(df)
-    #income_of_starting_airport_by_month_cum(df)
+    income_of_starting_airport_by_month_cum(df)
     

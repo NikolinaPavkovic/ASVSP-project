@@ -102,7 +102,7 @@ def airport_income_by_month(df):
     df.show()
     save_to_postgres(df, "airport_income_by_month")
 
-#8
+#8 Zarada aerodroma po mesecima sa kumulativnom sumom
 def income_of_starting_airport_by_month_cum(df):
     window = Window.partitionBy('startingAirport').orderBy('month', 'total_income')
     
